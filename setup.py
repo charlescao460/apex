@@ -7,6 +7,8 @@ import sys
 import warnings
 import os
 
+#'-gencode arch=compute_61,code=sm_61 -gencode arch=compute_61,code=compute_61',
+
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -121,7 +123,7 @@ if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 2):
 version_ge_1_5 = []
 if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 4):
     version_ge_1_5 = ['-DVERSION_GE_1_5']
-version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5
+version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5 
 
 if "--distributed_adam" in sys.argv:
     from torch.utils.cpp_extension import CUDAExtension
@@ -138,7 +140,7 @@ if "--distributed_adam" in sys.argv:
                           sources=['apex/contrib/csrc/optimizers/multi_tensor_distopt_adam.cpp',
                                    'apex/contrib/csrc/optimizers/multi_tensor_distopt_adam_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros,
                                               'nvcc':['-O3',
                                                       '--use_fast_math'] + version_dependent_macros}))
 
@@ -157,8 +159,8 @@ if "--distributed_lamb" in sys.argv:
                           sources=['apex/contrib/csrc/optimizers/multi_tensor_distopt_lamb.cpp',
                                    'apex/contrib/csrc/optimizers/multi_tensor_distopt_lamb_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros,
-                                              'nvcc':['-O3',
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros,
+                                              'nvcc':['-O3', 
                                                       '--use_fast_math'] + version_dependent_macros}))
 
 if "--cuda_ext" in sys.argv:
@@ -183,33 +185,34 @@ if "--cuda_ext" in sys.argv:
                                    'csrc/multi_tensor_adagrad.cu',
                                    'csrc/multi_tensor_novograd.cu',
                                    'csrc/multi_tensor_lamb.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                                               'nvcc':['-lineinfo',
                                                       '-O3',
                                                       # '--resource-usage',
-                                                      '--use_fast_math'] + version_dependent_macros}))
+                                                      '--use_fast_math'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
         ext_modules.append(
             CUDAExtension(name='syncbn',
                           sources=['csrc/syncbn.cpp',
                                    'csrc/welford.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc':['-O3'] + version_dependent_macros}))
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+                                              'nvcc':['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
 
         ext_modules.append(
             CUDAExtension(name='fused_layer_norm_cuda',
                           sources=['csrc/layer_norm_cuda.cpp',
                                    'csrc/layer_norm_cuda_kernel.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                                               'nvcc':['-maxrregcount=50',
                                                       '-O3',
-                                                      '--use_fast_math'] + version_dependent_macros}))
+                                                      '--use_fast_math'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
 
         ext_modules.append(
             CUDAExtension(name='mlp_cuda',
                           sources=['csrc/mlp.cpp',
                                    'csrc/mlp_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc':['-O3'] + version_dependent_macros}))
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+                                              'nvcc':['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']},
+                          extra_link_args=['cublas.lib','cublasLt.lib']))
 
 if "--bnp" in sys.argv:
     from torch.utils.cpp_extension import CUDAExtension
@@ -249,7 +252,7 @@ if "--xentropy" in sys.argv:
                           sources=['apex/contrib/csrc/xentropy/interface.cpp',
                                    'apex/contrib/csrc/xentropy/xentropy_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros,
                                               'nvcc':['-O3'] + version_dependent_macros}))
 
 if "--deprecated_fused_adam" in sys.argv:
@@ -267,7 +270,7 @@ if "--deprecated_fused_adam" in sys.argv:
                           sources=['apex/contrib/csrc/optimizers/fused_adam_cuda.cpp',
                                    'apex/contrib/csrc/optimizers/fused_adam_cuda_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros,
                                               'nvcc':['-O3',
                                                       '--use_fast_math'] + version_dependent_macros}))
 
@@ -287,7 +290,7 @@ if "--deprecated_fused_lamb" in sys.argv:
                                    'apex/contrib/csrc/optimizers/fused_lamb_cuda_kernel.cu',
                                    'csrc/multi_tensor_l2norm_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros,
                                               'nvcc':['-O3',
                                                       '--use_fast_math'] + version_dependent_macros}))
 
@@ -320,7 +323,7 @@ if "--fast_layer_norm" in sys.argv:
                                    'apex/contrib/csrc/layer_norm/ln_fwd_cuda_kernel.cu',
                                    'apex/contrib/csrc/layer_norm/ln_bwd_semi_cuda_kernel.cu',
                                    ],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-U__CUDA_NO_HALF_OPERATORS__',
@@ -359,7 +362,7 @@ if "--fmha" in sys.argv:
                                    'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_384_64_kernel.sm80.cu',
                                    'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_512_64_kernel.sm80.cu',
                                    ],
-                          extra_compile_args={'cxx': ['-O3',
+                          extra_compile_args={'cxx': ['-O2',
                                                       '-I./apex/contrib/csrc/fmha/src',
                                                       ] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
@@ -395,7 +398,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_additive_mask_softmax_dropout',
                           sources=['apex/contrib/csrc/multihead_attn/additive_masked_softmax_dropout.cpp',
                                    'apex/contrib/csrc/multihead_attn/additive_masked_softmax_dropout_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -408,7 +411,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_mask_softmax_dropout',
                           sources=['apex/contrib/csrc/multihead_attn/masked_softmax_dropout.cpp',
                                    'apex/contrib/csrc/multihead_attn/masked_softmax_dropout_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -421,7 +424,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_self_multihead_attn_bias_additive_mask',
                           sources=['apex/contrib/csrc/multihead_attn/self_multihead_attn_bias_additive_mask.cpp',
                                    'apex/contrib/csrc/multihead_attn/self_multihead_attn_bias_additive_mask_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -434,7 +437,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_self_multihead_attn_bias',
                           sources=['apex/contrib/csrc/multihead_attn/self_multihead_attn_bias.cpp',
                                    'apex/contrib/csrc/multihead_attn/self_multihead_attn_bias_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -447,7 +450,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_self_multihead_attn',
                           sources=['apex/contrib/csrc/multihead_attn/self_multihead_attn.cpp',
                                    'apex/contrib/csrc/multihead_attn/self_multihead_attn_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -460,7 +463,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_self_multihead_attn_norm_add',
                           sources=['apex/contrib/csrc/multihead_attn/self_multihead_attn_norm_add.cpp',
                                    'apex/contrib/csrc/multihead_attn/self_multihead_attn_norm_add_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -473,7 +476,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_encdec_multihead_attn',
                           sources=['apex/contrib/csrc/multihead_attn/encdec_multihead_attn.cpp',
                                    'apex/contrib/csrc/multihead_attn/encdec_multihead_attn_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -486,7 +489,7 @@ if "--fast_multihead_attn" in sys.argv:
             CUDAExtension(name='fast_encdec_multihead_attn_norm_add',
                           sources=['apex/contrib/csrc/multihead_attn/encdec_multihead_attn_norm_add.cpp',
                                    'apex/contrib/csrc/multihead_attn/encdec_multihead_attn_norm_add_cuda.cu'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag,
                                               'nvcc':['-O3',
                                                       '-gencode', 'arch=compute_70,code=sm_70',
                                                       '-I./apex/contrib/csrc/multihead_attn/cutlass/',
@@ -511,7 +514,7 @@ if "--transducer" in sys.argv:
                           sources=['apex/contrib/csrc/transducer/transducer_joint.cpp',
                                    'apex/contrib/csrc/transducer/transducer_joint_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros,
                                               'nvcc':['-O3',
                                                       '-I./apex/contrib/csrc/multihead_attn/'] + version_dependent_macros}))
         ext_modules.append(
@@ -519,7 +522,7 @@ if "--transducer" in sys.argv:
                           sources=['apex/contrib/csrc/transducer/transducer_loss.cpp',
                                    'apex/contrib/csrc/transducer/transducer_loss_kernel.cu'],
                           include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                          extra_compile_args={'cxx': ['-O2'] + version_dependent_macros,
                                               'nvcc':['-O3'] + version_dependent_macros}))
 
 if "--fast_bottleneck" in sys.argv:
@@ -537,7 +540,7 @@ if "--fast_bottleneck" in sys.argv:
             CUDAExtension(name='fast_bottleneck',
                           sources=['apex/contrib/csrc/bottleneck/bottleneck.cpp'],
                           include_dirs=['apex/contrib/csrc/cudnn-frontend/include'],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag}))
+                          extra_compile_args={'cxx': ['-O2',] + version_dependent_macros + generator_flag}))
 
 setup(
     name='apex',
